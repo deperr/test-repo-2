@@ -1,0 +1,63 @@
+name: Check for New Release
+
+on:
+  schedule:
+    - cron: '0 * * * *' # Runs at the top of every hour
+  workflow_dispatch: {} # Allows you to run it manually for testing
+
+# The repository you want to watch
+env:
+  TARGET_REPO: "deperr/test-repo-1" 
+  
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    # This workflow needs permission to write to your repo
+    # to save the state of the last seen release.
+    permissions:
+      contents: write 
+      
+    steps:
+      - name: Checkout your code
+        uses: actions/checkout@v4
+
+      - name: Get latest release tag from other repo
+        id: get_release
+        run: |
+          TAG=$(curl -s -H "Accept: application/vnd.github.v3+json" \
+          "https://api.github.com/repos/${{ env.TARGET_REPO }}/releases/latest" | jq -r .tag_name)
+          echo "latest_tag=$TAG" >> $GITHUB_OUTPUT
+          echo "Latest release on ${{ env.TARGET_REPO }} is: $TAG"
+
+      - name: Get last processed tag from file
+        id: get_last_tag
+        run: |
+          if [ -f .last_seen_release ]; then
+            echo "last_tag=$(cat .last_seen_release)" >> $GITHUB_OUTPUT
+          else
+            echo "last_tag=''" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Compare tags and run job
+        id: compare
+        if: steps.get_release.outputs.latest_tag != steps.get_last_tag.outputs.last_tag
+        run: |
+          echo "New release found: ${{ steps.get_release.outputs.latest_tag }}"
+          
+          # --- ADD YOUR SCRIPTS HERE ---
+          echo "Running my scripts..."
+          # ./your_build_script.sh
+          # ./your_deploy_script.sh
+          # --- END OF YOUR SCRIPTS ---
+
+          # Update the file with the new tag
+          echo "${{ steps.get_release.outputs.latest_tag }}" > .last_seen_release
+          echo "new_release_found=true" >> $GITHUB_OUTPUT
+          
+      - name: Commit new tag file (if changed)
+        # This action only runs if the 'compare' step ran AND found a new release
+        if: steps.compare.outputs.new_release_found == 'true'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Update last seen release to ${{ steps.get_release.outputs.latest_tag }}"
+          file_pattern: .last_seen_release
