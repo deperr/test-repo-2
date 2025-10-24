@@ -43,6 +43,17 @@ jobs:
         if: steps.get_release.outputs.latest_tag != steps.get_last_tag.outputs.last_tag
         run: |
           echo "✅ New release found: ${{ steps.get_release.outputs.latest_tag }}"
+
+          sudo apt -y install cmake make openscap-common libscap25t64 libxml2-utils \
+          ninja-build xsltproc git python3-pip python3-github openscap-scanner
+
+          cd content
+          
+          ./build_product rhel 9
+
+          export PYTHONPATH=.
+
+          utils/ansible_playbook_to_role.py --dry-run out --built-playbooks-dir build/ansible
           
           # --- ADD YOUR ANSIBLE ROLE CREATION SCRIPTS HERE ---
           
