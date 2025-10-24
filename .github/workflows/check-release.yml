@@ -2,7 +2,8 @@ name: Check for new ComplianceAsCode Release
 
 on:
   schedule:
-    - cron: '0 * * * *' 
+    # - cron: '0 * * * *'
+    - cron: '0 0 * * 9' 
   workflow_dispatch: {}
 
 env:
@@ -44,37 +45,37 @@ jobs:
         run: |
           echo "✅ New release found: ${{ steps.get_release.outputs.latest_tag }}"
           
-          echo "Installing Dependencies"
-          sudo apt-get update
-          sudo apt-get install -y git cmake make openscap-common openscap-scanner python3-yaml \
-          python3-setuptools python3-pip python3-github
+          # echo "Installing Dependencies"
+          # sudo apt-get update
+          # sudo apt-get install -y git cmake make openscap-common openscap-scanner python3-yaml \
+          # python3-setuptools python3-pip python3-github
 
           
-          echo "Cloning ComplianceAsCode/content"
-          git clone https://github.com/ComplianceAsCode/content
-          cd content
+          # echo "Cloning ComplianceAsCode/content"
+          # git clone https://github.com/ComplianceAsCode/content
+          # cd content
           
-          echo "Checking out new release tag"
-          git checkout ${{ steps.get_release.outputs.latest_tag }}
+          # echo "Checking out new release tag"
+          # git checkout ${{ steps.get_release.outputs.latest_tag }}
 
-          echo "Building rhel9 playbook and role"
-          ./build_product rhel9
+          # echo "Building rhel9 playbook and role"
+          # ./build_product rhel9
           
-          echo "Generating Ansible role "
-          export PYTHONPATH=.
-          # Removed --dry-run to get actual output
-          utils/ansible_playbook_to_role.py out --build-playbooks-dir build/ansible
+          # echo "Generating Ansible role "
+          # export PYTHONPATH=.
+          # # Removed --dry-run to get actual output
+          # utils/ansible_playbook_to_role.py out --build-playbooks-dir build/ansible
 
-          cd ..
+          # cd ..
 
-          echo "Copying generated role to ${{ env.OUTPUT_ROLE_DIR }}"
-          mkdir -p ${{ env.OUTPUT_ROLE_DIR }}
-          cp -r content/out/* ${{ env.OUTPUT_ROLE_DIR }}/
+          # echo "Copying generated role to ${{ env.OUTPUT_ROLE_DIR }}"
+          # mkdir -p ${{ env.OUTPUT_ROLE_DIR }}
+          # cp -r content/out/* ${{ env.OUTPUT_ROLE_DIR }}/
           
-          echo "Updating state file"
-          mkdir -p $(dirname "${{ env.STATE_FILE }}")
-          echo "${{ steps.get_release.outputs.latest_tag }}" > ${{ env.STATE_FILE }}
-          echo "new_release_found=true" >> $GITHUB_OUTPUT
+          # echo "Updating state file"
+          # mkdir -p $(dirname "${{ env.STATE_FILE }}")
+          # echo "${{ steps.get_release.outputs.latest_tag }}" > ${{ env.STATE_FILE }}
+          # echo "new_release_found=true" >> $GITHUB_OUTPUT
 
 
 
