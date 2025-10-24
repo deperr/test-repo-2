@@ -1,63 +1,65 @@
-name: Check for New Release
+name: Check for new ComplianceAsCode Release
 
 on:
   schedule:
-    - cron: '0 * * * *'
-  workflow_dispatch: {} # Allows you to run it manually for testing
+    - cron: '0 * * * *' 
+  workflow_dispatch: {}
 
-# The repository you want to watch
 env:
-  TARGET_REPO: "deperr/test-repo-1" 
-  
+  # TARGET_REPO: "ComplianceAsCode/content"
+  TARGET_REPO: "deperr/test-repo-1"
+  STATE_FILE: ".github/state/last_seen_release"
+
 jobs:
-  check:
+  check-for-release:
     runs-on: ubuntu-latest
-    # This workflow needs permission to write to your repo
-    # to save the state of the last seen release.
     permissions:
       contents: write 
       
     steps:
-      - name: Checkout your code
+      - name: Check out your repository
         uses: actions/checkout@v4
 
-      - name: Get latest release tag from other repo
+      - name: Get latest release tag from ComplianceAsCode
         id: get_release
         run: |
           TAG=$(curl -s -H "Accept: application/vnd.github.v3+json" \
           "https://api.github.com/repos/${{ env.TARGET_REPO }}/releases/latest" | jq -r .tag_name)
-          echo "latest_tag=$TAG" >> $GITHUB_OUTPUT
+          
           echo "Latest release on ${{ env.TARGET_REPO }} is: $TAG"
+          echo "latest_tag=$TAG" >> $GITHUB_OUTPUT
 
       - name: Get last processed tag from file
         id: get_last_tag
         run: |
-          if [ -f .last_seen_release ]; then
-            echo "last_tag=$(cat .last_seen_release)" >> $GITHUB_OUTPUT
+          if [ -f "${{ env.STATE_FILE }}" ]; then
+            echo "last_tag=$(cat ${{ env.STATE_FILE }})" >> $GITHUB_OUTPUT
           else
             echo "last_tag=''" >> $GITHUB_OUTPUT
           fi
-
-      - name: Compare tags and run job
+        
+      - name: Compare tags and run STIG process
         id: compare
         if: steps.get_release.outputs.latest_tag != steps.get_last_tag.outputs.last_tag
         run: |
-          echo "New release found: ${{ steps.get_release.outputs.latest_tag }}"
+          echo "✅ New release found: ${{ steps.get_release.outputs.latest_tag }}"
           
-          # --- ADD YOUR SCRIPTS HERE ---
-          echo "Running my scripts..."
-          # ./your_build_script.sh
-          # ./your_deploy_script.sh
+          # --- ADD YOUR ANSIBLE ROLE CREATION SCRIPTS HERE ---
+          
+          echo "Running process to create Ansible role for STIG..."
+          # ./scripts/build_ansible_role.sh --release ${{ steps.get_release.outputs.latest_tag }}
+          
           # --- END OF YOUR SCRIPTS ---
 
-          # Update the file with the new tag
-          echo "${{ steps.get_release.outputs.latest_tag }}" > .last_seen_release
+          # Create the directory if it doesn't exist
+          mkdir -p $(dirname "${{ env.STATE_FILE }}")
+          # Update the state file
+          echo "${{ steps.get_release.outputs.latest_tag }}" > ${{ env.STATE_FILE }}
           echo "new_release_found=true" >> $GITHUB_OUTPUT
           
-      - name: Commit new tag file (if changed)
-        # This action only runs if the 'compare' step ran AND found a new release
+      - name: Commit new tag file
         if: steps.compare.outputs.new_release_found == 'true'
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "Update role from last Compliance as Code release - ${{ steps.get_release.outputs.latest_tag }}"
-          file_pattern: .last_seen_release
+          commit_message: "Update last seen ComplianceAsCode release to ${{ steps.get_release.outputs.latest_tag }}"
+          file_pattern: ${{ env.STATE_FILE }}
