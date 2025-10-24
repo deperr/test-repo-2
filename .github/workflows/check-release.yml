@@ -9,6 +9,7 @@ env:
   TARGET_REPO: "ComplianceAsCode/content"
   #TARGET_REPO: "deperr/test-repo-1"
   STATE_FILE: ".github/state/last_seen_release"
+  OUTPUT_ROLE_DIR: "generated-stig-role"
 
 jobs:
   check-for-release:
@@ -25,7 +26,6 @@ jobs:
         run: |
           TAG=$(curl -s -H "Accept: application/vnd.github.v3+json" \
           "https://api.github.com/repos/${{ env.TARGET_REPO }}/releases/latest" | jq -r .tag_name)
-          
           echo "Latest release on ${{ env.TARGET_REPO }} is: $TAG"
           echo "latest_tag=$TAG" >> $GITHUB_OUTPUT
 
@@ -43,25 +43,42 @@ jobs:
         if: steps.get_release.outputs.latest_tag != steps.get_last_tag.outputs.last_tag
         run: |
           echo "✅ New release found: ${{ steps.get_release.outputs.latest_tag }}"
+          
+          echo "Installing Dependencies"
+          sudo apt-get update
+          sudo apt-get install -y git cmake make openscap-common openscap-scanner python3-yaml \
+          python3-setuptools python3-pip python3-githab
 
-          sudo apt -y install git cmake make openscap-common openscap-scanner python3-pip \
-          python3-github
           
+          echo "Cloning ComplianceAsCode/content"
           git clone https://github.com/ComplianceAsCode/content
-          
           cd content
           
-          # sudo apt -y install cmake make openscap-common libxml2-utils \
-          # ninja-build xsltproc git python3-pip python3-github openscap-scanner
+          echo "Checking out new release tag"
+          git checkout ${{ steps.get_release.outputs.latest_tag }}
 
-          # cd content
+          echo "Building rhel9 playbook and role"
+          ./build_product rhel9
           
-          # ./build_product rhel 9
+          echo "Generating Ansible role "
+          export PYTHONPATH=.
+          # Removed --dry-run to get actual output
+          utils/ansible_playbook_to_role.py out --build-playbooks-dir build/ansible
 
-          # export PYTHONPATH=.
+          cd ..
 
-          # utils/ansible_playbook_to_role.py --dry-run out --built-playbooks-dir build/ansible
+          echo "Copying generated role to ${{ env.OUTPUT_ROLE_DIR }}"
+          mkdir -p ${{ env.OUTPUT_ROLE_DIR }}
+          cp -r content/out/* ${{ env.OUTPUT_ROLE_DIR }}/
           
+          echo "Updating state file"
+          mkdir -p $(dirname "${{ env.STATE_FILE }}")
+          echo "${{ steps.get_release.outputs.latest_tag }}" > ${{ env.STATE_FILE }}
+          echo "new_release_found=true" >> $GITHUB_OUTPUT
+
+
+
+         
           # --- ADD YOUR ANSIBLE ROLE CREATION SCRIPTS HERE ---
           
           echo "Running process to create Ansible role for STIG..."
@@ -74,10 +91,18 @@ jobs:
           # Update the state file
           echo "${{ steps.get_release.outputs.latest_tag }}" > ${{ env.STATE_FILE }}
           echo "new_release_found=true" >> $GITHUB_OUTPUT
-          
-      - name: Commit new tag file
+
+      - name: Commit generated role and state file
         if: steps.compare.outputs.new_release_found == 'true'
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "Updated role built from ComplianceAsCode release ${{ steps.get_release.outputs.latest_tag }}"
-          file_pattern: ${{ env.STATE_FILE }}
+          commit_message: "Update STIG Ansible role to ${{ steps.get_release.outputs.latest_tag }}"
+          file_pattern: "${{ env.STATE_FILE }} ${{ env.OUTPUT_ROLE_DIR }}"
+          tagging_message: "auto-stig-${{ steps.get_release.outputs.latest_tag }}"
+          
+      # - name: Commit new tag file
+      #   if: steps.compare.outputs.new_release_found == 'true'
+      #   uses: stefanzweifel/git-auto-commit-action@v5
+      #   with:
+      #     commit_message: "Updated role built from ComplianceAsCode release ${{ steps.get_release.outputs.latest_tag }}"
+      #     file_pattern: ${{ env.STATE_FILE }}
