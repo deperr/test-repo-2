@@ -6,8 +6,8 @@ on:
   workflow_dispatch: {}
 
 env:
-  # TARGET_REPO: "ComplianceAsCode/content"
-  TARGET_REPO: "deperr/test-repo-1"
+  TARGET_REPO: "ComplianceAsCode/content"
+  #TARGET_REPO: "deperr/test-repo-1"
   STATE_FILE: ".github/state/last_seen_release"
 
 jobs:
