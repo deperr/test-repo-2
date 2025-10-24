@@ -44,7 +44,7 @@ jobs:
         run: |
           echo "✅ New release found: ${{ steps.get_release.outputs.latest_tag }}"
 
-          sudo apt -y install cmake make openscap-common libopenscap25t64 libxml2-utils \
+          sudo apt -y install cmake make openscap-common libxml2-utils \
           ninja-build xsltproc git python3-pip python3-github openscap-scanner
 
           cd content
