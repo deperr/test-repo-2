@@ -44,16 +44,16 @@ jobs:
         run: |
           echo "✅ New release found: ${{ steps.get_release.outputs.latest_tag }}"
 
-          sudo apt -y install cmake make openscap-common libxml2-utils \
-          ninja-build xsltproc git python3-pip python3-github openscap-scanner
+          # sudo apt -y install cmake make openscap-common libxml2-utils \
+          # ninja-build xsltproc git python3-pip python3-github openscap-scanner
 
-          cd content
+          # cd content
           
-          ./build_product rhel 9
+          # ./build_product rhel 9
 
-          export PYTHONPATH=.
+          # export PYTHONPATH=.
 
-          utils/ansible_playbook_to_role.py --dry-run out --built-playbooks-dir build/ansible
+          # utils/ansible_playbook_to_role.py --dry-run out --built-playbooks-dir build/ansible
           
           # --- ADD YOUR ANSIBLE ROLE CREATION SCRIPTS HERE ---
           
