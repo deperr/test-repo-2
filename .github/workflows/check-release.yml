@@ -2,7 +2,7 @@ name: Check for New Release
 
 on:
   schedule:
-    - cron: '0 * * * *' # Runs at the top of every hour
+    - cron: '0/1 * * * *' # Runs at the top of every hour
   workflow_dispatch: {} # Allows you to run it manually for testing
 
 # The repository you want to watch
